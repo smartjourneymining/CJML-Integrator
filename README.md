@@ -1,4 +1,5 @@
-# CJML-Integrator
+# CJML-Integrator [![DOI](https://zenodo.org/badge/728133494.svg)](https://zenodo.org/doi/10.5281/zenodo.10307556)
+
 CJML Integrator - A python application with GUI that allows to import XSS logs into Neo4J based on CJML EKG.
 
 # Use
