@@ -7,7 +7,7 @@ class ConnectionUI:
         self.entryBox = []
         self.master = master
         master.title("Connection to Neo4j server")
-        self.label = Label(master, text="Enter credentials for Neo4j server")
+        self.label = Label(master, text="Enter credentials to connect to Neo4j server")
         self.label.grid(row=0, columnspan=3)
 
         self.create_uri_field(master)

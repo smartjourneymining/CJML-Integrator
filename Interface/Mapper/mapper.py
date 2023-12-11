@@ -21,11 +21,11 @@ class Mapper:
         self.attribute_actor_field = []
 
         self.master = master
-        master.title("Map fields for " + mappingFor)
+        master.title("XSS field mapping" )
         master.columnconfigure(0, weight=1)
         master.columnconfigure(1, weight=1)
         master.rowconfigure(0, weight=1)
-        self.label = Label(master, text="Sort out the fields")
+        self.label = Label(master, text="Fields")
         self.label.pack()
         self.frame = Frame(master, height=1500)
         self.frame.pack(side="top", fill="x")

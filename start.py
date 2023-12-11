@@ -95,13 +95,17 @@ def create_entities(connector, log, mapping, session, timestampNames, rating, jo
 
     connector.create_communication_node(session, log["channel"])
 
+    primary_from_touchpoint = mapping.get_primary_keys()
+
+    connector.associate_touchpoint_and_communication(log["channel"],
+                                                     primary_from_touchpoint.get_field_string(log), session)
+
     if is_planned:
         connector.create_planned_touchpoint_connection(session, log["case:journey"])
 
     if (objects.getLength() > 0 and objects.mapping_values_are_defined(log)
             < objects.getLength()):
-        primary_from_touchpoint = mapping.get_primary_keys()
-        values, index  = objects.get_field_string(log)
+        values, index = objects.get_field_string(log)
         connector.associate_object_with_touchpoint(session,
                                                    primary_from_touchpoint.get_field_string(log),
                                                    values)
@@ -110,14 +114,17 @@ def create_entities(connector, log, mapping, session, timestampNames, rating, jo
                                                                  log
                                                                  ) < rating.getLength()):
         primary_from_touchpoint = mapping.get_primary_keys()
-        primary_Journey = journey.get_primary_keys()
         case_mapping = rating.filter_out_mapping_notstart_with("case:")
         values = case_mapping.get_range_field_string(log)
         if values != '':
             connector.associate_experience_with_touchpoint(session,
                                                            primary_from_touchpoint.get_field_string(log),
-                                                           primary_Journey.get_field_string(log),
+                                                           f'''journey:"{log["case:journey"]}"''',
                                                            values)
+            connector.associate_experience_with_event(session,
+                                                      primary_from_touchpoint.get_field_string(log),
+                                                      f'''journey:"{log["case:journey"]}"''',
+                                                      values)
 
 
 def get_array_idefiying_fields(mapping, from_type, to_type,
@@ -320,8 +327,7 @@ def create_actors(connector, log, mapping, session, event):
 
     actor_where = mapping.get_primary_where(log)
 
-    connector.associate_class_and_communication(log["channel"],
-                                                actor_where, session)
+
 
 
 def get_connection_properties(log, mapping, type_of_connection):
@@ -367,15 +373,16 @@ def create_connection_between_actor_event(connector,
                                                  type_of_connection,
                                                  log,
                                                  event)
+
+    connector.create_connection_touchpoint_entity(query_to_get_class_node,
+                                                  query_to_get_event_node,
+                                                  query,
+                                                  type_of_connection,
+                                                  properties, session)
+
     connector.create_connection_event_entity(query_to_get_class_node,
                                              query_to_get_event_node,
                                              query,
-                                             type_of_connection,
-                                             properties, session)
-    connector.create_connection_event_entity(query_to_get_class_node,
-                                             query_to_get_event_node,
-                                             query,
-                                             "Corr",
                                              properties, session)
 
 
@@ -446,6 +453,11 @@ def main():
                                                         row,
                                                         logs,
                                                         session, event)
+
+        with connector.driver.session() as session:
+            connector.direct_follows_fix(session)
+            connector.has_to_events(session)
+
 
     else:
         print("XML is not complient with XSD")

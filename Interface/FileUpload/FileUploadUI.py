@@ -19,7 +19,7 @@ class FileUploadUI:
 
     def createMainWindow(self, master):
         master.title("Integrator log upload")
-        self.label = Label(master, text="Upload XSS file, one file at a time")
+        self.label = Label(master, text="Please select XSS file")
         self.label.grid(row=0, columnspan=3)
         self.button_file_explorer = Button(master, text="Browse files",
                                            command=lambda: self.createDialog(master))
