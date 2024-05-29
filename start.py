@@ -93,11 +93,13 @@ def create_entities(connector, log, mapping, session, timestampNames, rating, jo
     connector.create_class_event_relationship(log["Id"],
                                               log["case:journey"], session)
 
-    connector.create_communication_node(session, log["channel"])
+    if(not(pd.isna(log["channel"]))):
+        connector.create_communication_node(session, log["channel"])
 
     primary_from_touchpoint = mapping.get_primary_keys()
 
-    connector.associate_touchpoint_and_communication(log["channel"],
+    if(not(pd.isna(log["channel"]))):
+        connector.associate_touchpoint_and_communication(log["channel"],
                                                      primary_from_touchpoint.get_field_string(log), session)
 
     if is_planned:
@@ -297,7 +299,7 @@ def get_actors_Identifier(log, mapping, actor_type, event):
                   and m.to_type == "Actor"]
 
         for index, f in enumerate(fields):
-            reuquest = reuquest + f.name + ":"+log[f.name]
+            reuquest = reuquest + f.name + ":'" + str(log[f.name]) +"'" # check main field to make sure it is not nan, if nan skip
             if len(fields) - 1 > index:
                 reuquest = reuquest + ","
     return reuquest
@@ -315,15 +317,15 @@ def create_actors(connector, log, mapping, session, event):
     where_clause = get_actors_Identifier(log, mapping, "Sender", event)
     connector.create_entity(insert, node_exists, session, where_clause)
     counter = counter + 1
-
-    insert, node_exists = get_actor_insert_value_str(log,
-                                                     mapping,
-                                                     event,
-                                                     "Receiver",
-                                                     connector, session)
-    where_clause = get_actors_Identifier(log, mapping, "Receiver", event)
-    connector.create_entity(insert, node_exists, session, where_clause)
-    counter = counter + 1
+    if(not(pd.isna(log["channel"]))):
+        insert, node_exists = get_actor_insert_value_str(log,
+                                                         mapping,
+                                                         event,
+                                                         "Receiver",
+                                                         connector, session)
+        where_clause = get_actors_Identifier(log, mapping, "Receiver", event)
+        connector.create_entity(insert, node_exists, session, where_clause)
+        counter = counter + 1
 
     actor_where = mapping.get_primary_where(log)
 
@@ -337,10 +339,11 @@ def get_connection_properties(log, mapping, type_of_connection):
     edge_fields = ""
     for field in fields:
         if field == "channel":
-            edge_fields = edge_fields \
-                          + field \
-                          + ":" \
-                          + get_value_To_string(log[field]) + ","
+            if not(pd.isna(log[field])):
+                edge_fields = edge_fields \
+                              + field \
+                              + ":" \
+                              + get_value_To_string(log[field]) + ","
 
         else:
             edge_fields = edge_fields \
@@ -373,12 +376,12 @@ def create_connection_between_actor_event(connector,
                                                  type_of_connection,
                                                  log,
                                                  event)
-
+    
     connector.create_connection_touchpoint_entity(query_to_get_class_node,
-                                                  query_to_get_event_node,
-                                                  query,
-                                                  type_of_connection,
-                                                  properties, session)
+                                                      query_to_get_event_node,
+                                                      query,
+                                                      type_of_connection,
+                                                      properties, session)
 
     connector.create_connection_event_entity(query_to_get_class_node,
                                              query_to_get_event_node,
@@ -440,12 +443,12 @@ def main():
                                                       actor,
                                                       "Sender",
                                                       session, event)
-
-                create_connection_between_actor_event(connector,
-                                                      row,
-                                                      actor,
-                                                      "Receiver",
-                                                      session, event)
+                if(not(pd.isna(row["channel"]))):
+                    create_connection_between_actor_event(connector,
+                                                          row,
+                                                          actor,
+                                                          "Receiver",
+                                                          session, event)
 
                 connector.create_directly_follows_tx(row["case:journey"],
                                                      session)

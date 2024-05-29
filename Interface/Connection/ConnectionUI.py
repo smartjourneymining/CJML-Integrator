@@ -12,10 +12,10 @@ class ConnectionUI:
 
         self.create_uri_field(master)
         self.create_entry_field(master=master, textForDisplay="Username",
-                                row=3, column=0)
+                                row=3, column=0, text="neo4j")
 
         self.create_entry_field(master=master, textForDisplay="Password",
-                                row=3, column=2, symbols="*")
+                                row=3, column=2, symbols="*", text="Slaptazodis1")
 
         self.Button = Button(master, text="Connect",
                              command=lambda: self.establishConnection(master))
@@ -44,11 +44,12 @@ class ConnectionUI:
                                           "neo4j+ssc",
                                           "bolt+ssc"))
 
-    def create_entry_field(self, textForDisplay, master, row, column, symbols=""):
+    def create_entry_field(self, textForDisplay, master, row, column, symbols="", text= ""):
         label = Label(master, text=textForDisplay)
         label.grid(row=row, column=column)
 
         entryBox = Entry(master, show=symbols)
+        entryBox.insert(0, text)
         entryBox.grid(row=row+1, column=column)
 
         self.entryBox.append(entryBox)
@@ -56,8 +57,10 @@ class ConnectionUI:
     def create_uri_field(self, master):
         self.UriLable = Label(master, text="Uri to Neo4j")
         self.UriLable.grid(row=1, columnspan=3, column=0)
-
+        
         self.Uri = Entry(master)
+        self.Uri.insert(0,"bolt://localhost:7687")
+        
         self.Uri.grid(row=2, columnspan=3, column=0)
 
     def get_connector(self):
