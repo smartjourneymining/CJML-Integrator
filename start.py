@@ -18,6 +18,71 @@ status = ""
 fileToRead = ""
 counter = 0
 
+listOfEmpty = ['SESSION_STARTED',
+'SESSION_ENDED',
+'FRONTPAGE_PARCEL_CARD',
+'PRODUCT_PAGE_VIEWED',
+'SELLER_LIST_PAGE_VIEWED',
+'SELLER_LIST_PAGE_CHANGED_SORT_METHOD',
+'SELLER_LIST_PAGE_CLICKED_SELLER',
+'REQUEST_CREATED',
+'REQUEST_1ST_REQUEST',
+'SEARCH_STARTED',
+'SEARCH_RESULTS_PAGE_CLICKED_BOOK',
+'SELLER_LIST_PAGE_TRIGGERED_PREVIEW_ELEMENT',
+'PRODUCT_PAGE_CLICKED_SEE_MORE_VERSIONS',
+'PRODUCT_PAGE_CLICKED_BOOK_IN_MORE_FROM_AUTHOR-CAROUSEL',
+'PRODUCT_ADDED_TO_LIKED_BOOKS_LIST',
+'PRODUCT_ADDED_TO_LIST',
+'PUBLIC_PROFILE_PAGE_VIEWED',
+'PUBLIC_PROFILE_CLICK_BOOK',
+'MORE_FROM_SELLER_PAGE_CLICKED_SKIP',
+'LISTING_PAGE_VIEWED',
+'PRODUCT_SCANNED',
+'LISTING_PAGE_CLICKED_SELL_THIS_BOOK',
+'LISTING_CREATED',
+'LISTING_DETAILS_PAGE_ADDED_LISTING_DATA',
+'LISTING_SUCCESS_PAGE_CLICKED_SELL_MORE',
+'REQUEST_ACCEPTED',
+'PRODUCT_ADDED_TO_WANTED_LIST',
+'SIGN_UP_DONE',
+'PRODUCT_ADDED_TO_CART',
+'REQUEST_REMOVED_PRODUCT',
+'AUTH_PAGE_CLICKED_EMAIL_LOGIN',
+'AUTH_PAGE_CLICKED_SOCIAL_LOGIN',
+'HELP_WIDGET__CLICKED',
+'REQUEST_DECLINED',
+'HOME_PAGE_CLICKED_BOOK_IN_CAROUSEL',
+'SEARCH_RESULTS_PAGE_APPLIED_FILTER',
+'LISTING_PAGE_CLICKED_VIEW_SELLING_GUIDE',
+'BUY_USED_PICK_BOOK_FROM_PRIVIEW',
+'PRODUCT_PAGE_CLICKED_PRODUCT_IN_YOU_MIGHT_ALSO_LIKE-CAROUSEL',
+'MESSAGING_RECEIVED_CALLOUT_LISTING_PROMPT',
+'PDP_CLICK_AUTHOR',
+'WANTED_LIST_MATCH_FOUND_TEST',
+'WANTED_LIST_MATCH_FOUND',
+'PDP_OTHER_VERSION_BUYBOX',
+'FRONTPAGE_BANNER',
+'LISTING_PAGE_CREATE_A_NEW_BOOK',
+'STRIPE_ID_VERIFICATION_COMPLETED',
+'ARTICLE_BANNER_CTA',
+'BLOG_ARTICLE_PAGE_VIEWED',
+'ARTICLE_CAROUSEL',
+'ELEMENT_CLICKED',
+'MORE_FROM_SELLER_PAGE_VIEWED',
+'CHECKOUT_PAGE_VIEWED',
+'CHECKOUT_STEP_2/2_PAGE_VIEWED',
+'AUTH_PAGE_VIEWED',
+'PDP_LEAVE_REVIEW',
+'FORSALESHARE',
+'LOGIN_MIGRATION_STARTED',
+'LOGIN_MIGRATION_SUCCESSFULL',
+'LISTSHARE',
+'PRODUCT_PAGE_CLICKED_MORE_VERSIONS',
+'PDPSHARE',
+'SELLER_LISTING_SELECTED',
+'MESSAGING_VERIFY_YOUR_STRIPE_ACCOUNT_REMINDER']
+
 
 def create_log(connector, logs, mapping, session,
                file_name, time_stamp, rating):
@@ -73,6 +138,7 @@ def get_fields_from_list(log, mapping, session, connector):
 
 
 def create_entities(connector, log, mapping, session, timestampNames, rating, journey, objects):
+    global listOfEmpty
     is_planned = False
     try:
         if np.isnan(log['case:isPlanned']):
@@ -86,9 +152,10 @@ def create_entities(connector, log, mapping, session, timestampNames, rating, jo
             if not (pd.isnull(log[field])) and not (is_planned):
                 create_subevent(connector, log, mapping, field, session)
 
-    connector.create_class(append_log_metadata(
-        mapping.get_field_string(log),
-        log), session, is_planned)
+    if(log['initiatorsLabel'] not in listOfEmpty):
+        connector.create_class(append_log_metadata(
+            mapping.get_field_string(log),
+            log), session, is_planned)
 
     connector.create_class_event_relationship(log["Id"],
                                               log["case:journey"], session)
@@ -409,7 +476,7 @@ def main():
     fileUploadUI = FileUploadUI(master)
     master.mainloop()
     master = tk.Tk()
-
+    listOfJourneys = []
     connector = connectUI.get_connector()
     if fileUploadUI.getFileLocation() != "" and \
        xmlschema.is_valid(fileUploadUI.getFileLocation(), '.\Xes.xsd'):
@@ -430,6 +497,8 @@ def main():
             with connector.driver.session() as session:
                 create_log(connector, row, logs,
                            session, file_name, time_stamp, rating)
+                
+                listOfJourneys.append(row["case:journey"])
 
                 create_entities(connector, row,
                                 event, session,
@@ -456,10 +525,12 @@ def main():
                                                         row,
                                                         logs,
                                                         session, event)
-
+        listOfJourneys = list(set(listOfJourneys))
         with connector.driver.session() as session:
-            connector.direct_follows_fix(session)
-            connector.has_to_events(session)
+            for journey in listOfJourneys:
+                connector.direct_follows_fix(session, journey)
+                connector.has_to_events(session)
+            connector.removeNullDF(session)
 
 
     else:

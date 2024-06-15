@@ -22,7 +22,7 @@ class Neo4jConnection:
 
     def create_journey_tx(self, tx, journey):
         q_create_journey = f''' Merge (l:Journey {{{journey}}})'''
-        print(q_create_journey)
+
         tx.run(q_create_journey)
 
     def create_journey(self, journey_query, session):
@@ -34,7 +34,6 @@ class Neo4jConnection:
     def create_log_tx(self, tx, file_name, time_stamp):
         q_create_log = f'''MERGE  (en:Log {{fileName:"{file_name}",
         timeStamp:{time_stamp}}})'''
-        print(q_create_log)
         tx.run(q_create_log)
 
     def associate_log_with_journey(self, session, log_where,
@@ -49,7 +48,6 @@ class Neo4jConnection:
         MATCH (j:Journey {{{log_where}}})
         MERGE (l)-[:Has]->(j)
         '''
-        print(q_associate_log_with_journey)
         tx.run(q_associate_log_with_journey)
 
     def create_event_tx(self, tx, attributes):
@@ -59,7 +57,7 @@ class Neo4jConnection:
         q_Create_Event += column
         q_Create_Event += ", Activity:TouchpointEvent"
         q_Create_Event += "})"
-        print(q_Create_Event)
+
         tx.run(q_Create_Event)
 
     def create_subevent(self, attributes, session):
@@ -67,7 +65,6 @@ class Neo4jConnection:
 
     def create_subevent_tx(self, tx, attributes):
         q_create_subevent = f'''Create (n: Event {{{attributes}}})'''
-        print(q_create_subevent)
         tx.run(q_create_subevent)
 
     def create_event(self, event, session):
@@ -84,12 +81,11 @@ class Neo4jConnection:
     def create_Entity_tx(self, tx, insert_values):
         q_create_entity = f'''
         MERGE (en:Entity {{{insert_values}}})'''
-        print(q_create_entity)
+
         tx.run(q_create_entity)
 
     def add_journey(self, connection, journeyID):
         qAddJourney = f''' Create (:Journey:Entity {{ID: "{journeyID}", EntityType="{"Journey"}"}})'''
-        print(qAddJourney)
         connection.run(qAddJourney)
 
     def create_connection_event_journey(self, event_where, journey_where,
@@ -105,7 +101,6 @@ class Neo4jConnection:
             WHERE {match}
             MERGE (e)-[:Contains]->(en)
         '''
-        print(q_link_events_to_journey)
         connection.run(q_link_events_to_journey)
 
     def create_entity_touchpoint_relationship(self, connection,
@@ -120,7 +115,6 @@ class Neo4jConnection:
         MERGE (e)-[{type_of_connection}:{type_of_connection}
         {{{properties}}}]->(en)'''
 
-        print(q_entity_event_relationship)
         connection.run(q_entity_event_relationship)
 
     def create_connection_touchpoint_entity(self, where_clause,
@@ -142,8 +136,6 @@ class Neo4jConnection:
         (ev:Event WHERE {query_to_get_event_node})
         MATCH (en:Entity WHERE {match_clause})
         MERGE (ev)-[cr:Corr]->(en)'''
-
-        print(q_entity_event_relationship)
         connection.run(q_entity_event_relationship)
 
     def create_connection_event_entity(self, where_clause,
@@ -155,8 +147,8 @@ class Neo4jConnection:
                               field_name, properties)
 
     def create_direct_event_flow(self, connection, jounreyID):
-        q_direct_event_flow = f'''MATCH (n: Entity)
-        MATCH (n)<-[:Sender|:Receiver]- ( ev WHERE ev.journey = {jounreyID})
+        q_direct_event_flow = f'''
+        MATCH (n)<-[:Sender|:Receiver]- ( ev: Event WHERE ev.journey = {jounreyID})
         WITH n, ev as events ORDER BY ev.timestamp, elementId(e)
         WITH n, collect( events ) AS eventList
         UNWIND range(0,size(eventList) -2 ) AS i
@@ -178,7 +170,7 @@ class Neo4jConnection:
         UNWIND range(0,size(nodes) -2 ) AS i
         WITH nodes[i] as e1, nodes[i+1] as e2
         MERGE (e1)-[:Df]->(e2)'''
-        print(qCreateDf)
+
         tx.run(qCreateDf)
 
     def create_class(self, insert, session, is_planned=False):
@@ -189,7 +181,7 @@ class Neo4jConnection:
         q_create_class = f'''
         CREATE (c:Touchpoint{ ":Class" if is_planned else "" } {{{full_properties}}} )
         '''
-        print(q_create_class)
+
         tx.run(q_create_class)
 
     def create_class_event_relationship(self, id, jounreyID, session):
@@ -202,7 +194,7 @@ class Neo4jConnection:
         (c:Touchpoint WHERE c.Id = "{id}" and c.journey = "{jounreyID}")
         MERGE (e)-[:Observe]->(c)
         '''
-        print(q_create_relationship)
+
         tx.run(q_create_relationship)
 
     def check_node_existance(self, query, session):
@@ -220,7 +212,7 @@ class Neo4jConnection:
     def update_Entity_tx(self, tx, query, identifier):
         q_update_entity = f'''MATCH (e:Entity {{{identifier}}})
         SET {query}'''
-        print(q_update_entity)
+
         tx.run(q_update_entity)
 
     def create_communication_node(self, session, channel):
@@ -242,7 +234,7 @@ class Neo4jConnection:
         MATCH (e:Touchpoint {{{where_touchpoint}}})
         MERGE (e)-[:Communicated]->(c)
         '''
-        print(q_associate_channel_touchpoint)
+
         tx.run(q_associate_channel_touchpoint)
 
     def associate_experience_with_journey(self, session, journey_data,
@@ -298,22 +290,27 @@ class Neo4jConnection:
         '''
         connection.run(q_direct_event_flow)
 
-    def direct_follows_fix(self, session):
-        session.execute_write(self.tx_direct_follows_fix)
+    def direct_follows_fix(self, session, journey):
+        session.execute_write(self.tx_direct_follows_fix, journey)
 
-    def tx_direct_follows_fix(self, connection):
-        query = f''' MATCH (n:Entity)
-        MATCH (n)<-[:Corr]-(ev)
-        WITH n, ev as events ORDER BY ev.timestamp, ev.Id
+    def tx_direct_follows_fix(self, connection, journey):
+        query = f''' 
+        MATCH (n: Entity where n.EntityType = 'End user')<-[:Corr]-(ev:Event where ev.journey = '{journey}')
+        WITH n, ev as events ORDER BY ev.TimeStamp, ev.Id
         WITH n, collect(events) AS eventList
         UNWIND range(0, size(eventList)-2) AS i
         WITH n, eventList[i] as e1, eventList[i+1] as e2
         MERGE (e1)-[df:Df {{EntityType:n.EntityType}}]->(e2)
         '''
         connection.run(query)
-        query= f'''        MATCH p=()-[r:Df]->() WHERE r.EntityType IS NULL DELETE r'''
-        connection.run(query)
+     
+    def removeNullDF(self, session):
+        session.execute_write(self.removeNullDF_tx)
 
+    def removeNullDF_tx(self, connection):
+        query= f''' MATCH p=()-[r:Df]->() WHERE r.EntityType IS NULL DELETE r'''
+        connection.run(query)
+ 
     def associate_experience_with_event(self, session, where_clause,
                                         jounreyID,
                                         properties):
