@@ -167,7 +167,7 @@ def create_entities(connector, log, mapping, session, timestampNames, rating, jo
 
     if(not(pd.isna(log["channel"]))):
         connector.associate_touchpoint_and_communication(log["channel"],
-                                                     primary_from_touchpoint.get_field_string(log), session)
+                                                     primary_from_touchpoint.get_field_string(log) + ', journey: "'+ log["case:journey"] + '"', session)
 
     if is_planned:
         connector.create_planned_touchpoint_connection(session, log["case:journey"])
@@ -245,7 +245,6 @@ def get_where_clause_to_match_other_node(
                                                  to_type, type_of_connection, event)
 
     query = construct_where_clause(fields_to_map, fields_from_map)
-    print(query)
     return query
 
 
@@ -394,10 +393,6 @@ def create_actors(connector, log, mapping, session, event):
         connector.create_entity(insert, node_exists, session, where_clause)
         counter = counter + 1
 
-    actor_where = mapping.get_primary_where(log)
-
-
-
 
 def get_connection_properties(log, mapping, type_of_connection):
     fields = ["channel", "initiator" if type_of_connection == "Sender"
@@ -420,13 +415,24 @@ def get_connection_properties(log, mapping, type_of_connection):
     return edge_fields
 
 
+def getToRemoveAttributes(mapper):
+    deleteTo = ""
+    first = True
+    for fieldId in mapper.event:
+        if fieldId.to_type == "Actor":
+            if not first:
+                deleteTo += ","
+            deleteTo += "n."+ fieldId.name
+            first = False
+    return deleteTo
+
 def create_connection_between_actor_event(connector,
                                           log, mapping, type_of_connection,
                                           session, event):
     properties = get_connection_properties(log,
                                            mapping,
                                            type_of_connection)
-    print(mapping)
+
     query_to_get_class_node = get_where_clause_to_find_node(log,
                                                             event,
                                                             "Event")
@@ -531,7 +537,9 @@ def main():
                 connector.direct_follows_fix(session, journey)
                 connector.has_to_events(session)
             connector.removeNullDF(session)
-
+            print(mapper)
+            attributesToRemove = getToRemoveAttributes(mapper)
+            connector.removePropertiesOfActors(session, attributesToRemove)
 
     else:
         print("XML is not complient with XSD")

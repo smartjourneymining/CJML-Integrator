@@ -21,7 +21,7 @@ class Neo4jConnection:
         return result
 
     def create_journey_tx(self, tx, journey):
-        q_create_journey = f''' Merge (l:Journey {{{journey}}})'''
+        q_create_journey = f''' Merge (l:Journey:Entity {{{journey}}})'''
 
         tx.run(q_create_journey)
 
@@ -59,6 +59,13 @@ class Neo4jConnection:
         q_Create_Event += "})"
 
         tx.run(q_Create_Event)
+
+    def removePropertiesOfActors(self,  session, attributes):
+        session.execute_write(self.removePropertiesOfActors_tx, attributes)
+
+    def removePropertiesOfActors_tx(self, tx, attributes):
+        q_remove_properties = f'''Match (n:Entity) Remove {attributes} return n'''
+        tx.run(q_remove_properties)
 
     def create_subevent(self, attributes, session):
         session.execute_write(self.create_subevent_tx, attributes)
@@ -293,9 +300,9 @@ class Neo4jConnection:
     def direct_follows_fix(self, session, journey):
         session.execute_write(self.tx_direct_follows_fix, journey)
 
-    def tx_direct_follows_fix(self, connection, journey):
-        query = f''' 
-        MATCH (n: Entity where n.EntityType = 'End user')<-[:Corr]-(ev:Event where ev.journey = '{journey}')
+    def tx_direct_follows_fix(self, connection, journey): # Remove journey based DF creation, this should show multitasking. After load delete all DF and recreate 
+        query = f'''  
+        MATCH (n: Entity where n.EntityType = 'End user')<-[:Corr]-(ev:Event where ev.journey = '{journey}') 
         WITH n, ev as events ORDER BY ev.TimeStamp, ev.Id
         WITH n, collect(events) AS eventList
         UNWIND range(0, size(eventList)-2) AS i
