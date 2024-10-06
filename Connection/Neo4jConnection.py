@@ -160,7 +160,7 @@ class Neo4jConnection:
         WITH n, collect( events ) AS eventList
         UNWIND range(0,size(eventList) -2 ) AS i
         WITH n, eventList[i] as e1, eventList[i+1] as e2
-        MERGE (e1)-[df:Df [EntityType:n.EntityType]]->(e2)
+        MERGE (e1)-[df:Df {{EntityType:n.EntityType}}]->(e2)
         '''
         connection.run(q_direct_event_flow)
 
@@ -176,7 +176,7 @@ class Neo4jConnection:
         WITH collect(b) AS nodes
         UNWIND range(0,size(nodes) -2 ) AS i
         WITH nodes[i] as e1, nodes[i+1] as e2
-        MERGE (e1)-[:Df]->(e2)'''
+        MERGE (e1)-[:Df  {{EntityType: "Journey"}}]->(e2)'''
 
         tx.run(qCreateDf)
 
@@ -297,17 +297,17 @@ class Neo4jConnection:
         '''
         connection.run(q_direct_event_flow)
 
-    def direct_follows_fix(self, session, journey):
-        session.execute_write(self.tx_direct_follows_fix, journey)
+    def direct_follows_fix(self, session):
+        session.execute_write(self.tx_direct_follows_fix,)
 
-    def tx_direct_follows_fix(self, connection, journey): # Remove journey based DF creation, this should show multitasking. After load delete all DF and recreate 
+    def tx_direct_follows_fix(self, connection): # Remove journey based DF creation, this should show multitasking. After load delete all DF and recreate 
         query = f'''  
-        MATCH (n: Entity where n.EntityType = 'End user')<-[:Corr]-(ev:Event where ev.journey = '{journey}') 
+        MATCH (n: Entity)<-[:Corr]-(ev:Event) 
         WITH n, ev as events ORDER BY ev.TimeStamp, ev.Id
         WITH n, collect(events) AS eventList
         UNWIND range(0, size(eventList)-2) AS i
         WITH n, eventList[i] as e1, eventList[i+1] as e2
-        MERGE (e1)-[df:Df {{EntityType:n.EntityType}}]->(e2)
+        Create (e1)-[df:Df {{EntityType:n.EntityType}}]->(e2)
         '''
         connection.run(query)
      

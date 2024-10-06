@@ -12,6 +12,8 @@ import numpy as np
 from Functions.StringManipulation import get_value_To_string, check_if_string_is_not_None, remove_case_append
 from Class.log import log
 from Class.objects import objects
+import re
+
 
 filesXes = Xes.Xes()
 status = ""
@@ -114,7 +116,7 @@ def append_log_metadata(string_of_values, log):
 
 def create_subevent(connector, log, mapping, field, session):
     node = f'''TimeStampType:"{field}", TimeStamp:"{log[field]}", Id:"{log["Id"]}"
-                                    , journey:"{log["case:journey"]}"'''
+                                    , journey:"{log["case:journey"]}", Label:"{log["EventType"]}"'''
     connector.create_subevent(node, session)
 
 
@@ -343,12 +345,15 @@ def get_actor_insert_value_str(log, mapping,
                                       actor_type_alternative,
                                       event,
                                       node_exists)
+    
+
     if not node_exists:
+        regexMatch = re.search("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}", log[user_to_pick])
         user_type = user_type \
                     + "EntityType"\
                     + sign\
-                    + '"Service Provider"' if log["case:enduser"] != log[user_to_pick] \
-                    else "EntityType"+sign+'"End user"'
+                    + '"End user"' if log["case:enduser"] == log[user_to_pick] or regexMatch is not None \
+                    else "EntityType"+sign+'"Service Provider"'
 
         insert = insert + "," + user_type
 
@@ -484,6 +489,7 @@ def main():
     master = tk.Tk()
     listOfJourneys = []
     connector = connectUI.get_connector()
+    
     if fileUploadUI.getFileLocation() != "" and \
        xmlschema.is_valid(fileUploadUI.getFileLocation(), '.\Xes.xsd'):
         logs2 = pm4py.read_xes(fileUploadUI.getFileLocation())
@@ -533,8 +539,8 @@ def main():
                                                         session, event)
         listOfJourneys = list(set(listOfJourneys))
         with connector.driver.session() as session:
+            connector.direct_follows_fix(session)
             for journey in listOfJourneys:
-                connector.direct_follows_fix(session, journey)
                 connector.has_to_events(session)
             connector.removeNullDF(session)
             print(mapper)
