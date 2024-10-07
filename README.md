@@ -7,5 +7,7 @@ When application opened, it requires login credentials for Neo4J instance. After
 
 # Launching
 To run application, you need to run: 
-    pip install -r requirements.txt
-    py start.py
+```
+pip install -r requirements.txt
+py start.py
+```
