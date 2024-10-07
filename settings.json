@@ -137,6 +137,14 @@
             "foreign_key": 0,
             "to_type": "",
             "actor_type": "Field belongs"
+        },
+        {
+            "name": "EventType",
+            "type_map": "Event",
+            "identifier": 0,
+            "foreign_key": 0,
+            "to_type": "",
+            "actor_type": "Field belongs"
         }
     ],
     "Log": [
